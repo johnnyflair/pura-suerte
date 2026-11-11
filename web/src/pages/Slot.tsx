@@ -1,17 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api, fmt } from '../api';
 import { useSession } from '../session';
-import { Icon } from '../icons';
-import { Disclaimer, Modal, TopBar } from '../components/Chrome';
+import { Modal } from '../components/Chrome';
+import { CoinArt, CoinBurst, SoundButton, SymbolArt, SYM_NAMES, useCountUp, type Sym } from '../components/Art';
+import { sfx, startMusic, stopMusic, unlock } from '../sound';
 
-type Sym = 'cafe' | 'fruta' | 'coin' | 'gift' | 'tesoro' | 'templo';
-const SYMS: Sym[] = ['cafe', 'fruta', 'coin', 'gift', 'tesoro', 'templo'];
-const COLORS: Record<Sym, string> = {
-  cafe: '#E8C39E', fruta: '#F59AB0', coin: '#FFE08A', gift: '#C9B6FF', tesoro: '#FFD166', templo: '#7AD3C0',
-};
-const NAMES: Record<Sym, string> = {
-  cafe: 'Café', fruta: 'Fruta', coin: 'Moneda', gift: 'Regalo', tesoro: 'Pirámide', templo: 'Templo',
-};
+const SPIN_SYMS: Sym[] = ['cafe', 'fruta', 'coin', 'gift', 'tesoro', 'templo'];
 
 interface SpinRes {
   grid: Sym[][];
@@ -23,59 +18,79 @@ interface SpinRes {
   freeSpinsLeft: number;
   balance: number;
   wasFree: boolean;
+  bet: number;
 }
 
-const rnd = (): Sym[][] => Array.from({ length: 5 }, () => Array.from({ length: 3 }, () => SYMS[Math.floor(Math.random() * 5)]));
+const rndCol = (n = 3): Sym[] => Array.from({ length: n }, () => SPIN_SYMS[Math.floor(Math.random() * 5)]);
+const rndGrid = () => Array.from({ length: 5 }, () => rndCol());
 
 export default function Slot() {
   const { me, setBalance, toast, refresh } = useSession();
+  const nav = useNavigate();
   const [meta, setMeta] = useState<any>(null);
-  const [grid, setGrid] = useState<Sym[][]>(() => rnd());
+  const [grid, setGrid] = useState<Sym[][]>(rndGrid);
   const [stopped, setStopped] = useState(5);
-  const [betIdx, setBetIdx] = useState(2);
+  const [betIdx, setBetIdx] = useState(3);
   const [res, setRes] = useState<SpinRes | null>(null);
   const [spinning, setSpinning] = useState(false);
-  const [, setTick] = useState(0);
   const [auto, setAuto] = useState(0);
   const [turbo, setTurbo] = useState(false);
   const [showPay, setShowPay] = useState(false);
+  const [showBig, setShowBig] = useState(false);
   const [freeSpins, setFreeSpins] = useState(me?.freeSpins ?? 0);
-  const timer = useRef<number | undefined>(undefined);
+  const [spinId, setSpinId] = useState(0);
+  const timers = useRef<number[]>([]);
 
   useEffect(() => {
     api('/api/slot/meta').then(setMeta);
-    return () => window.clearInterval(timer.current);
+    startMusic();
+    return () => {
+      stopMusic();
+      timers.current.forEach(clearTimeout);
+      refresh();
+    };
   }, []);
   useEffect(() => setFreeSpins(me?.freeSpins ?? 0), [me?.freeSpins]);
 
   const steps: number[] = meta?.betSteps ?? [100, 200, 500, 1000, 2000, 5000, 10000, 20000];
   const bet = steps[betIdx];
+  const big = !!res && res.totalWin >= res.bet * 10;
+  const shownWin = useCountUp(res?.totalWin ?? 0, big ? 1600 : 700, sfx.coinTick);
 
   const doSpin = async () => {
     if (spinning) return;
+    unlock();
+    sfx.spinStart();
     setSpinning(true);
     setRes(null);
+    setShowBig(false);
     setStopped(0);
-    timer.current = window.setInterval(() => setTick((t) => t + 1), 70);
+    setSpinId((x) => x + 1);
     try {
       const r = await api<SpinRes>('/api/slot/spin', { body: { bet } });
-      const base = turbo ? 150 : 550, step = turbo ? 70 : 180;
       setGrid(r.grid);
+      const base = turbo ? 200 : 650, step = turbo ? 90 : 230;
       for (let reel = 0; reel < 5; reel++) {
-        window.setTimeout(() => {
+        timers.current.push(window.setTimeout(() => {
           setStopped(reel + 1);
+          sfx.reelStop(reel);
+          if (r.grid[reel].includes('templo')) sfx.wheelTick();
           if (reel === 4) {
-            window.clearInterval(timer.current);
             setRes(r);
             setBalance(r.balance);
             setFreeSpins(r.freeSpinsLeft);
             setSpinning(false);
-            if (r.freeSpinsAwarded) toast(`¡${r.freeSpinsAwarded} giros gratis en el templo!`);
+            const isBig = r.totalWin >= r.bet * 10;
+            setShowBig(isBig);
+            if (r.freeSpinsAwarded) {
+              sfx.scatter();
+              toast(`¡${r.freeSpinsAwarded} giros gratis en el templo!`);
+            } else if (isBig) sfx.winBig();
+            else if (r.totalWin > 0) sfx.winSmall();
           }
-        }, base + reel * step);
+        }, base + reel * step));
       }
     } catch (e: any) {
-      window.clearInterval(timer.current);
       setStopped(5);
       setSpinning(false);
       setAuto(0);
@@ -83,109 +98,146 @@ export default function Slot() {
     }
   };
 
-  // Juego automático: dispara el siguiente giro cuando termina el anterior
   useEffect(() => {
     if (auto > 0 && !spinning) {
       const t = window.setTimeout(() => {
         setAuto((a) => a - 1);
         doSpin();
-      }, res && res.totalWin > 0 ? 900 : 350);
+      }, res && res.totalWin > 0 ? (big ? 2400 : 1000) : 400);
       return () => window.clearTimeout(t);
     }
   }, [auto, spinning]);
 
-  useEffect(() => () => { refresh(); }, []);
+  useEffect(() => {
+    if (!showBig) return;
+    const t = window.setTimeout(() => setShowBig(false), 2600);
+    return () => window.clearTimeout(t);
+  }, [showBig]);
 
   const winCells = new Set(res?.lineWins.flatMap((w) => w.cells.map(([a, b]) => `${a}-${b}`)) ?? []);
-  const shown = spinning ? grid.map((col, i) => (i < stopped ? col : rnd()[i])) : grid;
+  // tiras de símbolos que pasan mientras gira cada rodillo
+  const strips = useMemo(() => Array.from({ length: 5 }, () => rndCol(12)), [spinId]);
+  const bestLine = res?.lineWins.slice().sort((a, b) => b.amount - a.amount)[0];
 
   return (
-    <div className="screen screen-game">
-      <TopBar title="Tesoro Maya" />
-      <section className="slot-machine">
-        <div className="slot-top">
-          <span>5 RODILLOS · 20 LÍNEAS</span>
-          {meta && <span className="yel">RTP {meta.rtp}%</span>}
+    <div className="screen screen-game slot-screen">
+      <svg className="slot-bg" viewBox="0 0 390 300" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+        <circle cx="330" cy="40" r="120" fill="#FFD166" opacity=".35" />
+        <path d="M0 230 L80 140 L130 190 L200 110 L280 200 L340 150 L390 190 V300 H0Z" fill="#F3C9A0" opacity=".55" />
+        <path d="M150 210h90v-14h-78v-14h66v-14h-54v-14h42v-14h-30" fill="none" stroke="#E2A97A" strokeWidth="3" opacity=".8" />
+      </svg>
+
+      <header className="topbar">
+        <button type="button" className="icon-btn raised" aria-label="Volver" onClick={() => { sfx.tap(); nav(-1); }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <strong className="topbar-title">Tesoro Maya</strong>
+        <SoundButton />
+        <span className="coins"><CoinArt size={22} />{fmt(me?.user.balance ?? 0)}</span>
+      </header>
+
+      <section className="cabinet">
+        <div className="cabinet-top">
+          <span>20 LÍNEAS</span>
+          {freeSpins > 0 ? <span className="pill-gold">{freeSpins} GIROS GRATIS</span> : meta && <span className="pill-gold">RTP {meta.rtp}%</span>}
         </div>
-        <div className="reels" aria-live="polite">
-          {[0, 1, 2].map((row) =>
-            shown.map((col, reel) => {
-              const s = col[row];
-              const win = !spinning && (winCells.has(`${reel}-${row}`) || (res && res.scatterCount >= 3 && s === 'templo'));
-              return (
-                <span key={`${reel}-${row}`} className={`cell ${win ? 'win' : ''} ${spinning && reel >= stopped ? 'blur' : ''}`}
-                  style={{ background: COLORS[s], gridColumn: reel + 1, gridRow: row + 1 }} aria-label={NAMES[s]}>
-                  <Icon name={s} size={30} color="var(--tx)" />
-                </span>
-              );
-            }),
-          )}
-        </div>
-        <div className="slot-result">
-          {res && res.totalWin > 0 ? (
-            <>
-              <span className="small light">
-                {res.lineWins.length > 0 && `${res.lineWins.length} línea${res.lineWins.length > 1 ? 's' : ''} ganadora${res.lineWins.length > 1 ? 's' : ''}`}
-                {res.scatterWin > 0 && ` · ${res.scatterCount} templos`}
-              </span>
-              <strong className="slot-win">¡Ganaste {fmt(res.totalWin)}!</strong>
-            </>
-          ) : (
-            <span className="light">{spinning ? 'Girando…' : res ? 'Sin premio esta vez' : 'Busca 3 pirámides o más en línea'}</span>
-          )}
+        <div className="reels2">
+          {[0, 1, 2, 3, 4].map((reel) => {
+            const isSpinning = spinning && reel >= stopped;
+            return (
+              <div key={reel} className="reel-col">
+                {isSpinning ? (
+                  <div className="strip" style={{ animationDuration: turbo ? '.18s' : '.28s' }}>
+                    {[...strips[reel], ...strips[reel]].map((s, i) => (
+                      <span key={i} className="cell2 blur"><SymbolArt s={s} size={46} /></span>
+                    ))}
+                  </div>
+                ) : (
+                  grid[reel].map((s, row) => {
+                    const win = !spinning && (winCells.has(`${reel}-${row}`) || (!!res && res.scatterCount >= 3 && s === 'templo'));
+                    const dim = !spinning && !!res && res.totalWin > 0 && !win;
+                    return (
+                      <span key={`${spinId}-${row}`} className={`cell2 land ${win ? 'win' : ''} ${dim ? 'dim' : ''}`} aria-label={SYM_NAMES[s]}>
+                        <SymbolArt s={s} size={46} />
+                      </span>
+                    );
+                  })
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 
-      <section className="card row gap12">
-        <Icon name="templo" size={24} color="var(--acc)" />
-        <span className="grow small">
-          {freeSpins > 0 ? (
-            <><strong>{freeSpins} giros gratis</strong><br /><span className="muted">Con apuesta de {fmt(me?.freeSpinBet || bet)} cada uno</span></>
-          ) : (
-            <><strong>Templo de giros gratis</strong><br /><span className="muted">3 templos en cualquier lugar = 10 giros gratis</span></>
-          )}
-        </span>
+      <section className="win-card" aria-live="polite">
+        {res && res.totalWin > 0 ? (
+          <>
+            <SymbolArt s={bestLine?.symbol ?? 'templo'} size={46} />
+            <div className="grow">
+              <div className="muted small">
+                {bestLine ? `${bestLine.count} × ${SYM_NAMES[bestLine.symbol].toLowerCase()}` : ''}
+                {res.lineWins.length > 1 ? ` · ${res.lineWins.length} líneas` : ''}
+                {res.scatterWin > 0 ? `${bestLine ? ' · ' : ''}${res.scatterCount} templos` : ''}
+              </div>
+              <div className={`win-amount ${big ? 'big' : ''}`}>¡Ganaste {fmt(shownWin)}!</div>
+            </div>
+          </>
+        ) : (
+          <div className="grow center muted">
+            {spinning ? 'Girando…' : res ? 'Sin premio esta vez. ¡Otra!' : 'Busca 3 pirámides o más en línea'}
+          </div>
+        )}
       </section>
 
-      <section className="slot-controls">
+      <section className="slot-controls2">
         <div className="col gap6">
-          <span className="label">APUESTA POR GIRO</span>
+          <span className="label">{freeSpins > 0 ? 'GIRO GRATIS DE' : 'APUESTA'}</span>
           <div className="row gap8">
-            <button type="button" className="step-btn" aria-label="Bajar apuesta" disabled={spinning || betIdx === 0 || freeSpins > 0} onClick={() => setBetIdx((i) => i - 1)}>−</button>
-            <strong className="bet-val">{fmt(bet)}</strong>
-            <button type="button" className="step-btn" aria-label="Subir apuesta" disabled={spinning || betIdx === steps.length - 1 || freeSpins > 0} onClick={() => setBetIdx((i) => i + 1)}>+</button>
+            <button type="button" className="step-btn raised" aria-label="Bajar apuesta" disabled={spinning || betIdx === 0 || freeSpins > 0} onClick={() => { sfx.tap(); setBetIdx((i) => i - 1); }}>−</button>
+            <strong className="bet-val">{fmt(freeSpins > 0 ? me?.freeSpinBet || bet : bet)}</strong>
+            <button type="button" className="step-btn raised" aria-label="Subir apuesta" disabled={spinning || betIdx === steps.length - 1 || freeSpins > 0} onClick={() => { sfx.tap(); setBetIdx((i) => i + 1); }}>+</button>
           </div>
         </div>
-        <button type="button" className="spin-btn" onClick={doSpin} disabled={spinning}>
+        <button type="button" className={`spin-btn2 ${spinning ? 'spinning' : ''}`} onClick={doSpin} disabled={spinning}>
           {freeSpins > 0 ? 'GRATIS' : 'GIRAR'}
         </button>
       </section>
 
       <section className="row gap10 px20">
-        <button type="button" className={`btn btn-outline grow ${auto > 0 ? 'on' : ''}`} onClick={() => setAuto(auto > 0 ? 0 : 10)}>
+        <button type="button" className={`btn btn-raised grow ${auto > 0 ? 'on' : ''}`} onClick={() => { sfx.tap(); setAuto(auto > 0 ? 0 : 10); }}>
           {auto > 0 ? `Detener (${auto})` : 'Auto ×10'}
         </button>
-        <button type="button" className={`btn btn-outline grow ${turbo ? 'on' : ''}`} aria-pressed={turbo} onClick={() => setTurbo(!turbo)}>Turbo</button>
-        <button type="button" className="btn btn-outline grow" onClick={() => setShowPay(true)}>Pagos</button>
+        <button type="button" className={`btn btn-raised grow ${turbo ? 'on' : ''}`} aria-pressed={turbo} onClick={() => { sfx.tap(); setTurbo(!turbo); }}>Turbo</button>
+        <button type="button" className="btn btn-raised grow" onClick={() => { sfx.tap(); setShowPay(true); }}>Pagos</button>
       </section>
 
-      <Disclaimer />
+      <p className="disclaimer center">Monedas virtuales sin valor monetario. Solo entretenimiento, +18.</p>
+
+      {showBig && res && (
+        <div className="big-win-overlay" onClick={() => setShowBig(false)}>
+          <CoinBurst />
+          <div className="big-win-box">
+            <span>{res.totalWin >= res.bet * 50 ? '¡MEGA PREMIO!' : '¡GRAN PREMIO!'}</span>
+            <strong>{fmt(shownWin)}</strong>
+          </div>
+        </div>
+      )}
 
       {showPay && meta && (
         <Modal title="Tabla de pagos" onClose={() => setShowPay(false)}>
-          <p className="muted small">Pagos por línea para una apuesta de {fmt(bet)} (cada línea vale {fmt(bet / 20)}). Las combinaciones pagan de izquierda a derecha desde el primer rodillo.</p>
+          <p className="muted small">Pagos por línea con una apuesta de {fmt(bet)} (cada línea vale {fmt(bet / 20)}). Pagan de izquierda a derecha desde el primer rodillo.</p>
           <table className="pay-table">
             <thead><tr><th>Símbolo</th><th>×3</th><th>×4</th><th>×5</th></tr></thead>
             <tbody>
               {(['tesoro', 'gift', 'coin', 'fruta', 'cafe'] as const).map((s) => (
                 <tr key={s}>
-                  <td><span className="pay-sym" style={{ background: COLORS[s] }}><Icon name={s} size={18} /></span>{NAMES[s]}</td>
+                  <td><SymbolArt s={s} size={30} />{SYM_NAMES[s]}</td>
                   {meta.paytable[s].map((m: number, i: number) => <td key={i}>{fmt((m * bet) / 20)}</td>)}
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="small"><strong>Templo:</strong> 3 o más en cualquier posición pagan {meta.scatterPay}× la apuesta y dan {meta.freeSpins} giros gratis.</p>
+          <div className="row gap10 small"><SymbolArt s="templo" size={36} /><span><strong>Templo:</strong> 3 o más en cualquier posición pagan {meta.scatterPay}× la apuesta y dan {meta.freeSpins} giros gratis.</span></div>
           <p className="muted small">Retorno teórico al jugador: {meta.rtp}%.</p>
         </Modal>
       )}

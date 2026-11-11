@@ -4,6 +4,8 @@ import { useSession } from '../session';
 import { Icon } from '../icons';
 import { Modal, TopBar } from '../components/Chrome';
 import { AdModal } from '../components/Rewards';
+import { CoinArt } from '../components/Art';
+import { sfx } from '../sound';
 
 interface Pack { id: string; coins: number; priceCents: number; tag?: string; freeSpins?: number; welcome?: boolean }
 
@@ -32,6 +34,7 @@ export default function Tienda() {
     try {
       const r = await api('/api/store/buy', { body: { packId: p.id } });
       setBalance(r.balance);
+      sfx.cashout();
       toast(`+${fmt(r.coins)} monedas${r.freeSpins ? ` y ${r.freeSpins} giros gratis` : ''}`);
       setConfirm(null);
       refresh();
@@ -45,6 +48,7 @@ export default function Tienda() {
     try {
       const r = await api('/api/bonus/gift', { method: 'POST' });
       setBalance(r.balance);
+      sfx.cashout();
       toast(`+${fmt(r.coins)} monedas de regalo`);
       refresh();
     } catch (e: any) {
@@ -81,7 +85,7 @@ export default function Tienda() {
           const hot = p.tag === 'Más popular';
           return (
             <li key={p.id} className={`pack ${hot ? 'hot' : ''}`}>
-              <Icon name="coin" size={30} color={hot ? 'var(--acc)' : '#B07A00'} />
+              <CoinArt size={hot ? 40 : 34} />
               <div className="grow col">
                 <strong className="pack-amt">{fmt(p.coins)}</strong>
                 {p.tag ? <span className="pack-tag">{p.tag.toUpperCase()}</span> : <span className="muted small">monedas</span>}

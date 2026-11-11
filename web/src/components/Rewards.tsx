@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, fmt } from '../api';
 import { useSession } from '../session';
 import { Modal } from './Chrome';
+import { sfx, unlock } from '../sound';
 
 const SEG_COLORS = ['#FFD166', '#F59AB0', '#7AD3C0', '#9DB8FF', '#FFB38A', '#C9B6FF'];
 const SEG_VALUES = [1000, 2000, 5000, 10000, 25000, 50000];
@@ -49,12 +50,20 @@ export function WheelModal({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const spin = async () => {
+    unlock();
     setBusy(true);
     try {
       const r = await api<{ segment: number; coins: number; balance: number }>('/api/bonus/wheel', { method: 'POST' });
       // el segmento i queda arriba (bajo el puntero) cuando la rueda gira -(i*60+30)
       setRot(360 * 6 - (r.segment * 60 + 30));
+      // tic-tac que se va frenando, como una rueda real
+      let t = 0;
+      for (let i = 0; i < 26; i++) {
+        t += 40 + i * i * 0.45;
+        if (t < 3900) window.setTimeout(sfx.wheelTick, t);
+      }
       window.setTimeout(() => {
+        if (r.coins >= 10000) sfx.winBig(); else sfx.winSmall();
         setResult(r.coins);
         setBalance(r.balance);
         refresh();
@@ -113,6 +122,7 @@ export function AdModal({ onClose }: { onClose: () => void }) {
       const r = await api<{ coins: number; balance: number }>('/api/ads/claim', { body: { token } });
       setBalance(r.balance);
       setDone(r.coins);
+      sfx.cashout();
       refresh();
     } catch (e: any) {
       toast(e.message);

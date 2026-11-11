@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, fmt } from '../api';
 import { useSession } from '../session';
+import { useNavigate } from 'react-router-dom';
 import { Icon } from '../icons';
-import { Disclaimer, TopBar } from '../components/Chrome';
+import { CoinArt, CoinBurst, RocketArt, SoundButton } from '../components/Art';
+import { engineStart, engineStop, engineUpdate, sfx, unlock } from '../sound';
 
 const MIN = 100, MAX = 50000;
 
@@ -13,6 +15,7 @@ const multAt = (ms: number, g: number) => Math.floor(Math.exp(g * Math.max(0, ms
 
 export default function Cohete() {
   const { me, setBalance, toast, refresh } = useSession();
+  const nav = useNavigate();
   const [bet, setBet] = useState('1000');
   const [autoOn, setAutoOn] = useState(false);
   const [auto, setAuto] = useState('2.00');
@@ -29,6 +32,7 @@ export default function Cohete() {
     return () => {
       cancelAnimationFrame(raf.current!);
       window.clearInterval(poll.current);
+      engineStop();
       refresh();
     };
   }, []);
@@ -36,6 +40,9 @@ export default function Cohete() {
   const finish = (o: Outcome & { balance?: number }) => {
     cancelAnimationFrame(raf.current!);
     window.clearInterval(poll.current);
+    engineStop();
+    if (o.status === 'crashed') sfx.explosion();
+    else sfx.cashout();
     setOut(o);
     setMult(o.status === 'cashed' ? o.cashoutAt! : o.crashPoint);
     setHistory((h) => [o.crashPoint, ...h].slice(0, 8));
@@ -49,6 +56,8 @@ export default function Cohete() {
     if (!(b >= MIN && b <= MAX)) return toast(`La apuesta va de ${fmt(MIN)} a ${fmt(MAX)}.`);
     const a = autoOn ? Number(auto) : null;
     if (autoOn && !(a! >= 1.01)) return toast('El retiro automático debe ser x1.01 o más.');
+    unlock();
+    sfx.tap();
     setBusy(true);
     setOut(null);
     try {
@@ -60,8 +69,11 @@ export default function Cohete() {
       };
       setRound(rd);
       setBusy(false);
+      engineStart();
       const tick = () => {
-        setMult(multAt(Date.now() + rd.offset - rd.startedAt, rd.growth));
+        const m = multAt(Date.now() + rd.offset - rd.startedAt, rd.growth);
+        setMult(m);
+        engineUpdate(m);
         raf.current = requestAnimationFrame(tick);
       };
       tick();
@@ -112,22 +124,39 @@ export default function Cohete() {
 
   return (
     <div className="screen screen-game">
-      <TopBar title="Cohete" />
+      <header className="topbar">
+        <button type="button" className="icon-btn raised" aria-label="Volver" onClick={() => { sfx.tap(); nav(-1); }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <strong className="topbar-title">Cohete</strong>
+        <SoundButton />
+        <span className="coins"><CoinArt size={22} />{fmt(me?.user.balance ?? 0)}</span>
+      </header>
       {history.length > 0 && (
         <div className="hist px20" aria-label="Rondas anteriores">
           {history.map((h, i) => <span key={i} className={`chip-x light ${h >= 2 ? 'good' : ''}`}>x{h.toFixed(2)}</span>)}
         </div>
       )}
 
-      <section className="rocket-stage" aria-live="polite">
-        <svg width="100%" height="230" viewBox="0 0 350 230" preserveAspectRatio="none" aria-hidden="true">
-          {round && <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+      <section className={`rocket-stage2 ${flying ? 'flying' : ''}`} aria-live="polite">
+        <div className="stars" aria-hidden="true" />
+        <svg width="100%" height="250" viewBox="0 0 350 230" preserveAspectRatio="none" aria-hidden="true">
+          {round && (
+            <>
+              <polygon points={`0,230 ${pts.join(' ')} ${lx},230`} fill={color} opacity=".12" />
+              <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            </>
+          )}
         </svg>
-        {round && !out && (
-          <span className="rocket-icon" style={{ left: `calc(${(lx / 350) * 100}% - 16px)`, top: Math.max(4, ly - 30) }}>
-            <Icon name="cohete" size={32} color="#F3EEFF" stroke={1.6} />
+        {(!round || flying) && (
+          <span className="rocket-sprite" style={round ? { left: `calc(${(lx / 350) * 100}% - 18px)`, top: Math.max(0, (ly / 230) * 250 - 46), transform: 'rotate(40deg)' } : { left: 'calc(50% - 18px)', top: 120 }}>
+            <RocketArt size={36} flame={flying} />
           </span>
         )}
+        {out?.status === 'crashed' && (
+          <span className="boom" style={{ left: `calc(${(lx / 350) * 100}% - 50px)`, top: Math.max(0, (ly / 230) * 250 - 60) }} aria-hidden="true" />
+        )}
+        {out?.status === 'cashed' && <CoinBurst n={18} />}
         <div className="rocket-readout">
           <span className="rocket-x" style={{ color }}>x{mult.toFixed(2)}</span>
           <span className="rocket-sub">
@@ -139,7 +168,7 @@ export default function Cohete() {
         </div>
       </section>
 
-      {out?.status === 'cashed' && <p className="result-banner good">¡Ganaste {fmt(out.payout)} monedas!</p>}
+      {out?.status === 'cashed' && <p className="result-banner good pop">¡Ganaste {fmt(out.payout)} monedas!</p>}
       {out?.status === 'crashed' && <p className="result-banner bad">Perdiste {fmt(round!.bet)} monedas</p>}
 
       <section className="card col gap12">
@@ -158,13 +187,13 @@ export default function Cohete() {
         </div>
         <div className="row gap8">
           {['½', '×2', '1K', '5K', 'MÁX'].map((k) => (
-            <button key={k} type="button" className="btn btn-outline btn-sm grow" disabled={flying} onClick={() => quick(k)}>{k}</button>
+            <button key={k} type="button" className="btn btn-raised btn-sm grow" disabled={flying} onClick={() => { sfx.tap(); quick(k); }}>{k}</button>
           ))}
         </div>
         {flying ? (
-          <button type="button" className="btn btn-acc btn-xl" onClick={cashout} disabled={busy}>Retirar {fmt(potential)}</button>
+          <button type="button" className="btn btn-cash btn-xl" onClick={cashout} disabled={busy}>Retirar {fmt(potential)}</button>
         ) : (
-          <button type="button" className="btn btn-dark btn-xl" onClick={start} disabled={busy}>
+          <button type="button" className="btn btn-launch btn-xl" onClick={start} disabled={busy}>
             {out ? 'Jugar otra vez' : 'Despegar'} · {fmt(Number(bet) || 0)}
           </button>
         )}
@@ -177,7 +206,7 @@ export default function Cohete() {
         {out && <code className="hash">Semilla: {out.seed}</code>}
       </section>
 
-      <Disclaimer />
+      <p className="disclaimer center">Monedas virtuales sin valor monetario. Solo entretenimiento, +18.</p>
     </div>
   );
 }

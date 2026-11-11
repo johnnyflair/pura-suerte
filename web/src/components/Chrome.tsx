@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Icon } from '../icons';
 import { fmt } from '../api';
 import { useSession } from '../session';
+import { CoinArt } from './Art';
 
 export const DISCLAIMER =
   'Monedas virtuales sin valor monetario: no se pueden comprar premios ni canjear por dinero. Solo entretenimiento, para mayores de 18 años.';
@@ -10,7 +11,7 @@ export function Coins() {
   const { me } = useSession();
   return (
     <Link to="/tienda" className="coins" aria-label={`Saldo ${fmt(me?.user.balance ?? 0)} monedas. Comprar monedas`}>
-      <Icon name="coin" size={18} color="var(--yel)" />
+      <CoinArt size={22} />
       <span>{fmt(me?.user.balance ?? 0)}</span>
       <Icon name="plus" size={16} color="var(--yel)" stroke={2.4} />
     </Link>

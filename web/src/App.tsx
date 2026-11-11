@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { SessionProvider, useSession } from './session';
 import { Toast } from './components/Chrome';
+import { ArtDefs } from './components/Art';
+import { unlock } from './sound';
 import Lobby from './pages/Lobby';
 import Slot from './pages/Slot';
 import Cohete from './pages/Cohete';
@@ -36,7 +38,8 @@ export default function App() {
   return (
     <SessionProvider>
       <BrowserRouter>
-        <div className="app">
+        <div className="app" onPointerDown={unlock}>
+          <ArtDefs />
           <Routed />
           <Toast />
         </div>

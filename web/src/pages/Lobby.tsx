@@ -5,6 +5,7 @@ import { useSession } from '../session';
 import { Icon } from '../icons';
 import { BottomNav, Coins, Disclaimer, Logo, Modal } from '../components/Chrome';
 import { AdModal, WheelModal, WheelSvg } from '../components/Rewards';
+import { RocketArt, SymbolArt } from '../components/Art';
 import { GAMES, GAME_NAMES, type GameInfo } from '../games';
 
 const CATS = ['Todos', 'Slots', 'Instantáneos', 'Mesa'] as const;
@@ -22,7 +23,13 @@ function GameTile({ g }: { g: GameInfo }) {
   const inner = (
     <>
       <span className="tile-art" style={{ background: g.color }}>
-        <Icon name={g.key} size={60} color="var(--tx)" stroke={1.6} />
+        {g.key === 'tesoro' ? (
+          <SymbolArt s="tesoro" size={92} />
+        ) : g.key === 'cohete' ? (
+          <span className="tile-rocket"><RocketArt size={46} /></span>
+        ) : (
+          <Icon name={g.key} size={60} color="var(--tx)" stroke={1.6} />
+        )}
         <span className="tile-tag">{g.category.toUpperCase()}</span>
         {!g.path && <span className="tile-soon">Próximamente</span>}
       </span>
@@ -154,7 +161,7 @@ export default function Lobby() {
             <polyline points="0,96 40,94 80,88 120,78 160,63 200,45 240,24 270,8" fill="none" stroke="var(--mint)" strokeWidth="3" strokeLinecap="round" />
           </svg>
           <span className="rocket-mini-x">x3.47</span>
-          <span className="rocket-mini-icon"><Icon name="cohete" size={26} color="#F3EEFF" stroke={1.6} /></span>
+          <span className="rocket-mini-icon"><RocketArt size={24} /></span>
         </div>
         {history.length > 0 && (
           <div className="hist">
