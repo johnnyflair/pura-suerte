@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { migrate } from './db/index.js';
 import { authRoutes } from './auth.js';
 import { gameRoutes } from './routes.js';
+import { pizoteRoutes } from './pizoteRoutes.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const webDist = process.env.WEB_DIST ?? join(here, '../../web/dist');
@@ -16,6 +17,7 @@ export async function buildApp() {
   await app.register(cookie);
   gameRoutes(app);
   authRoutes(app);
+  pizoteRoutes(app);
   app.get('/api/health', async () => ({ ok: true }));
 
   if (existsSync(webDist)) {

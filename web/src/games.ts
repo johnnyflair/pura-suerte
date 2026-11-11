@@ -7,6 +7,7 @@ export interface GameInfo {
 }
 
 export const GAMES: GameInfo[] = [
+  { key: 'pizote', name: 'Pizote cruza Chepe', category: 'Instantáneos', color: '#8FD18A', path: '/juego/pizote' },
   { key: 'tesoro', name: 'Tesoro Maya', category: 'Slots', color: '#FFD166', path: '/juego/tesoro-maya' },
   { key: 'cohete', name: 'Cohete', category: 'Instantáneos', color: '#9DB8FF', path: '/juego/cohete' },
   { key: 'fruta', name: 'Fruta Loca', category: 'Slots', color: '#F59AB0' },
@@ -19,4 +20,4 @@ export const GAMES: GameInfo[] = [
   { key: 'blackjack', name: 'Blackjack 21', category: 'Mesa', color: '#B8E0A0' },
 ];
 
-export const GAME_NAMES: Record<string, string> = { 'tesoro-maya': 'Tesoro Maya', cohete: 'Cohete' };
+export const GAME_NAMES: Record<string, string> = { 'tesoro-maya': 'Tesoro Maya', cohete: 'Cohete', pizote: 'Pizote cruza Chepe' };

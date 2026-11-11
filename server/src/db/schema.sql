@@ -75,3 +75,38 @@ CREATE TABLE IF NOT EXISTS purchases (
   status      TEXT NOT NULL,               -- pending, paid
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Pizote cruza Chepe
+CREATE TABLE IF NOT EXISTS pizote_rounds (
+  id          TEXT PRIMARY KEY,
+  user_id     BIGINT NOT NULL REFERENCES users(id),
+  bet         BIGINT NOT NULL,
+  crash_lane  INTEGER NOT NULL,
+  server_seed TEXT NOT NULL,
+  pos         INTEGER NOT NULL DEFAULT 0,
+  status      TEXT NOT NULL DEFAULT 'playing', -- playing, cashed, crashed
+  multiplier  NUMERIC(10,2),
+  payout      BIGINT NOT NULL DEFAULT 0,
+  started_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ended_at    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS pizote_user_status ON pizote_rounds(user_id, status);
+CREATE INDEX IF NOT EXISTS pizote_ended ON pizote_rounds(ended_at DESC);
+
+-- Retos entre amigos
+CREATE TABLE IF NOT EXISTS challenges (
+  code        TEXT PRIMARY KEY,
+  owner_id    BIGINT NOT NULL REFERENCES users(id),
+  round_id    TEXT NOT NULL REFERENCES pizote_rounds(id),
+  target      NUMERIC(10,2) NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at  TIMESTAMPTZ NOT NULL
+);
+CREATE TABLE IF NOT EXISTS challenge_entries (
+  code        TEXT NOT NULL REFERENCES challenges(code),
+  user_id     BIGINT NOT NULL REFERENCES users(id),
+  accepted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  attempted   BOOLEAN NOT NULL DEFAULT false,
+  won         BOOLEAN NOT NULL DEFAULT false,
+  PRIMARY KEY (code, user_id)
+);

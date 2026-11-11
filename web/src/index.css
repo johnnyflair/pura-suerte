@@ -267,3 +267,54 @@ a.tile:hover .tile-art, a.tile:active .tile-art { transform: scale(.97); }
 .pop { animation: popIn .4s cubic-bezier(.3,1.6,.5,1); }
 .rocket-card { box-shadow: 0 8px 0 #0B0714, 0 16px 30px rgba(30,20,50,.25); }
 .wheel-card { box-shadow: 0 8px 0 #6B1F0D, 0 16px 30px rgba(120,40,10,.25); }
+
+/* ===== Pizote cruza Chepe ===== */
+.pz-screen { background: linear-gradient(180deg, #FFE9CF, var(--bg) 40%); gap: 14px; }
+.pz-board { position: relative; margin: 0 14px; border-radius: 22px; overflow: hidden; border: 4px solid var(--acc); background: #3B3A40; box-shadow: 0 8px 0 #6B1F0D, 0 16px 30px rgba(120,40,10,.3); }
+.pz-goal { position: relative; height: 70px; line-height: 0; }
+.pz-goal > span:first-child svg { width: 100%; height: 70px; }
+.pz-goal-chip { position: absolute; left: 8px; top: 6px; padding: 3px 9px; border-radius: 999px; background: var(--tx); color: var(--yel); font-size: 12px; font-weight: 800; line-height: 1.4; }
+.pz-lane { position: relative; height: 54px; background: linear-gradient(180deg,#4A4952,#36353C); border-bottom: 3px dashed rgba(255,255,255,.45); overflow: visible; }
+.pz-lane.passed { background: linear-gradient(180deg,#5A5963,#46454E); }
+.pz-prop { position: absolute; z-index: 1; }
+.pz-car { position: absolute; left: 0; bottom: 3px; z-index: 1; }
+.pz-car.r1 { animation: pzR 3.2s linear infinite; }
+.pz-car.r2 { animation: pzL 2.6s linear infinite; }
+.pz-car.r3 { animation: pzR 1.9s linear infinite; }
+.pz-car.d1 { animation-delay: -1.2s; } .pz-car.d2 { animation-delay: -.5s; } .pz-car.d3 { animation-delay: -2s; }
+@keyframes pzR { from { transform: translateX(-130px); } to { transform: translateX(480px); } }
+@keyframes pzL { from { transform: translateX(480px) scaleX(-1); } to { transform: translateX(-130px) scaleX(-1); } }
+.pz-chip { position: absolute; left: 8px; top: 50%; margin-top: -12px; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; background: rgba(255,255,255,.18); color: #fff; z-index: 2; line-height: 1.4; }
+.pz-chip.passed { background: var(--mint); color: var(--tx); }
+.pz-chip.here { background: var(--yel); color: var(--tx); }
+.pz-name { position: absolute; right: 8px; top: 50%; margin-top: -8px; font-size: 10px; font-weight: 700; color: rgba(255,255,255,.75); z-index: 2; }
+.pz-piz { position: absolute; z-index: 4; filter: drop-shadow(0 3px 2px rgba(0,0,0,.3)); }
+.pz-piz.idle { animation: pzBob .6s ease-in-out infinite; }
+.pz-piz.hop { animation: pzHop .32s cubic-bezier(.3,1.5,.5,1), pzBob .6s ease-in-out .32s infinite; }
+@keyframes pzBob { 50% { transform: translateY(-4px); } }
+@keyframes pzHop { 0% { transform: translateY(54px) scale(.9); } 60% { transform: translateY(-12px) scale(1.05); } 100% { transform: translateY(0); } }
+.pz-piz.spin { animation: pzSpin .7s ease-out; transform: rotate(-20deg); }
+@keyframes pzSpin { from { transform: rotate(-380deg) scale(.6); } }
+.pz-boom { position: absolute; left: calc(50% - 45px); top: -18px; width: 90px; height: 90px; border-radius: 999px; background: radial-gradient(circle,#FFF3B0,#FFB020 40%,#FF4D2E 65%,transparent 72%); z-index: 3; animation: boom .8s ease-out forwards; }
+.pz-bus-hit { position: absolute; z-index: 5; animation: pzHit .35s ease-out; }
+@keyframes pzHit { from { transform: translateX(-160px); } }
+.pz-sidewalk { position: relative; height: 48px; background: linear-gradient(180deg,#A89E93 0 4px,#CFC6BC 4px); display: flex; align-items: center; padding-left: 10px; font-size: 12px; font-weight: 700; color: #5A4E44; }
+.pz-status { flex-direction: row !important; align-items: center; }
+.pz-status .right { text-align: right; }
+.pz-big { font-size: 26px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pz-big.good { color: #1F8A3E; } .pz-big.bad { color: var(--acc); }
+.btn-go { background: linear-gradient(180deg,#5FD17A,#1F8A3E); color: #fff; box-shadow: 0 5px 0 #145C29; }
+.btn-go:active { transform: translateY(4px); box-shadow: 0 1px 0 #145C29; }
+.btn-share { background: var(--yel); color: var(--tx); box-shadow: 0 5px 0 #C99A1E; padding: 0 20px; }
+.btn-whatsapp { background: #25D366; color: #fff; box-shadow: 0 4px 0 #128C4A; }
+.share-preview { width: 60%; align-self: center; border-radius: 16px; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+.pz-banner { margin: 0 20px; padding: 16px; border-radius: 24px; background: linear-gradient(135deg, #8FD18A, #3F9A4A); color: #0F3314; text-decoration: none; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 0 #2A6B32, 0 16px 30px rgba(30,90,40,.25); overflow: hidden; }
+.pz-banner .eyebrow { color: #0F3314; }
+.pz-banner-title { font-size: 22px; line-height: 1.1; }
+.pz-banner .btn { align-self: flex-start; margin-top: 4px; }
+.pz-banner-art { position: relative; display: flex; align-items: flex-end; }
+.pz-banner-taxi { position: absolute; left: -40px; bottom: 0; }
+.reto-screen { padding-bottom: 32px; }
+.reto-card { margin: 0 20px; padding: 22px; border-radius: 28px; background: var(--acc); color: #fff; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; box-shadow: 0 8px 0 #6B1F0D; }
+.reto-title { font-size: 24px; line-height: 1.15; }
+.reto-card .btn-white { align-self: center; }

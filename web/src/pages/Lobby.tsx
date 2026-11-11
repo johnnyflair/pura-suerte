@@ -6,6 +6,10 @@ import { Icon } from '../icons';
 import { BottomNav, Coins, Disclaimer, Logo, Modal } from '../components/Chrome';
 import { AdModal, WheelModal, WheelSvg } from '../components/Rewards';
 import { RocketArt, SymbolArt } from '../components/Art';
+import { useNavigate } from 'react-router-dom';
+import { Art } from './Pizote';
+import { PIZ_FELIZ, PIZ_NORMAL, TAXI } from '../pizoteArt';
+import { PENDING_RETO } from './Reto';
 import { GAMES, GAME_NAMES, type GameInfo } from '../games';
 
 const CATS = ['Todos', 'Slots', 'Instantáneos', 'Mesa'] as const;
@@ -23,7 +27,9 @@ function GameTile({ g }: { g: GameInfo }) {
   const inner = (
     <>
       <span className="tile-art" style={{ background: g.color }}>
-        {g.key === 'tesoro' ? (
+        {g.key === 'pizote' ? (
+          <Art html={PIZ_NORMAL} w={80} h={93} />
+        ) : g.key === 'tesoro' ? (
           <SymbolArt s="tesoro" size={92} />
         ) : g.key === 'cohete' ? (
           <span className="tile-rocket"><RocketArt size={46} /></span>
@@ -111,8 +117,14 @@ export default function Lobby() {
   const [welcome, setWelcome] = useState(new URLSearchParams(loc.search).has('bienvenida'));
   const [history, setHistory] = useState<number[]>([]);
 
+  const navigate = useNavigate();
   useEffect(() => {
     api('/api/crash/history').then((r) => setHistory(r.history)).catch(() => {});
+    // si llegó por un reto antes de registrarse, lo llevamos al reto
+    try {
+      const code = localStorage.getItem(PENDING_RETO);
+      if (code) navigate(`/reto/${code}`);
+    } catch { /* sin almacenamiento */ }
   }, []);
 
   if (!me) return null;
@@ -150,6 +162,19 @@ export default function Lobby() {
         </div>
         <WheelSvg size={100} />
       </section>
+
+      <Link to="/juego/pizote" className="pz-banner">
+        <div className="grow col gap6">
+          <span className="eyebrow">NUEVO · RETÁ A TUS AMIGOS</span>
+          <strong className="pz-banner-title">Pizote cruza Chepe</strong>
+          <span className="small">Cruzá la calle sin que te agarre el bus. Cada carril multiplica tu premio.</span>
+          <span className="btn btn-go btn-sm">Jugar</span>
+        </div>
+        <div className="pz-banner-art">
+          <Art html={TAXI} w={70} h={38} className="pz-banner-taxi" />
+          <Art html={PIZ_FELIZ} w={86} h={100} />
+        </div>
+      </Link>
 
       <section className="rocket-card">
         <div className="row-between">

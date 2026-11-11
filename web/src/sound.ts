@@ -130,6 +130,16 @@ export const sfx = {
     tone(1760, 0.09, 0.35, { type: 'square', vol: 0.08 });
     noise(0.05, 0.25, { vol: 0.12, freq: 6000, type: 'highpass' });
   },
+  hop() {
+    tone(392, 0, 0.09, { type: 'square', vol: 0.07, slideTo: 784 });
+    tone(784, 0.07, 0.08, { type: 'triangle', vol: 0.1 });
+  },
+  horn() {
+    tone(330, 0, 0.35, { type: 'sawtooth', vol: 0.09 });
+    tone(415, 0, 0.35, { type: 'sawtooth', vol: 0.07 });
+    tone(330, 0.42, 0.25, { type: 'sawtooth', vol: 0.09 });
+    tone(415, 0.42, 0.25, { type: 'sawtooth', vol: 0.07 });
+  },
   lose() {
     tone(330, 0, 0.18, { type: 'triangle', vol: 0.15, slideTo: 220 });
   },

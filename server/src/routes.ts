@@ -10,8 +10,9 @@ import * as slot from './games/slot.js';
 import * as crash from './games/crash.js';
 
 const SLOT_GAME = 'tesoro-maya';
+const PIZOTE_GAME = 'pizote';
 const CRASH_GAME = 'cohete';
-const MISSION = { id: 'two-games', title: 'Juega Tesoro Maya y Cohete hoy', coins: 3_000 };
+const MISSION = { id: 'two-games', title: 'Juega 2 juegos distintos hoy', coins: 3_000 };
 
 const adTokens = new Map<string, { userId: number; at: number }>();
 
@@ -31,8 +32,8 @@ async function countToday(userId: number, reason: string): Promise<number> {
 async function missionState(userId: number) {
   const r = await pool.query(
     `SELECT count(DISTINCT game)::int AS n FROM ledger
-     WHERE user_id = $1 AND reason = 'bet' AND game IN ($2,$3) AND created_at >= date_trunc('day', now())`,
-    [userId, SLOT_GAME, CRASH_GAME],
+     WHERE user_id = $1 AND reason = 'bet' AND game IN ($2,$3,$4) AND created_at >= date_trunc('day', now())`,
+    [userId, SLOT_GAME, CRASH_GAME, PIZOTE_GAME],
   );
   const claimed = (await countToday(userId, 'mission')) > 0;
   return { ...MISSION, progress: r.rows[0].n as number, goal: 2, claimed };

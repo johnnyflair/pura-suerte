@@ -59,3 +59,23 @@ describe('Cohete', () => {
     expect(multiplierAt(msToReach(2) + 1)).toBeGreaterThanOrEqual(2);
   });
 });
+
+import * as pz from './pizote.js';
+describe('Pizote cruza Chepe', () => {
+  it('multiplicadores crecientes de x1.20 a x5.72', () => {
+    expect(pz.MULTIPLIERS[0]).toBe(1.2);
+    expect(pz.MULTIPLIERS[7]).toBe(5.72);
+  });
+  it('RTP ≈ 96% retirándose en cualquier carril', () => {
+    const n = 100_000;
+    for (const target of [1, 3, 5, 8]) {
+      let won = 0;
+      for (let i = 0; i < n; i++) {
+        const crash = pz.crashLaneFromSeed(newSeed());
+        if (crash > target) won += pz.multiplier(target);
+      }
+      expect(won / n).toBeGreaterThan(0.93);
+      expect(won / n).toBeLessThan(0.98);
+    }
+  }, 60_000);
+});
