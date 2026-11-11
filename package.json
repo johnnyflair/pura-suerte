@@ -1,0 +1,11 @@
+{
+  "name": "pura-suerte",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix server ci && npm --prefix web ci",
+    "build": "npm --prefix web run build",
+    "start": "npm --prefix server start",
+    "test": "npm --prefix server test"
+  },
+  "engines": { "node": ">=20" }
+}
