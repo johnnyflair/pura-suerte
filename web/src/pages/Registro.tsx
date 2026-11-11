@@ -83,7 +83,7 @@ export default function Registro() {
         <h1>Revisa tu correo</h1>
         <p className="muted">Te mandamos un enlace a <strong>{email}</strong> para entrar. Vence en 20 minutos.</p>
         {sent.devLink && (
-          <a className="btn btn-acc btn-lg" href={sent.devLink}>Abrir enlace (modo desarrollo)</a>
+          <a className="btn btn-acc btn-lg" href={sent.devLink}>Abrir enlace (modo prueba)</a>
         )}
         <button type="button" className="link-btn" onClick={() => setSent(null)}>Usar otro correo</button>
       </div>

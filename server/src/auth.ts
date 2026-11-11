@@ -9,6 +9,9 @@ import { BRAND, MIN_AGE, WELCOME_COINS } from './config.js';
 const SESSION_DAYS = 30;
 const COOKIE = 'sid';
 const isProd = process.env.NODE_ENV === 'production';
+// Solo para pruebas internas: muestra el enlace de acceso en pantalla cuando no hay proveedor de correo.
+// NUNCA activar con usuarios reales: cualquiera podría entrar con cualquier correo.
+const showDevLink = !process.env.RESEND_API_KEY && (!isProd || process.env.ALLOW_DEV_LOGIN === 'true');
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const google = googleClientId ? new OAuth2Client(googleClientId) : null;
 
@@ -160,7 +163,7 @@ export function authRoutes(app: FastifyInstance) {
     const base = process.env.PUBLIC_URL ?? `${req.protocol}://${req.headers.host}`;
     const link = `${base}/api/auth/email/verify?token=${token}`;
     await sendMagicLink(email, link);
-    return { ok: true, devLink: !isProd && !process.env.RESEND_API_KEY ? link : undefined };
+    return { ok: true, devLink: showDevLink ? link : undefined };
   });
 
   app.get('/api/auth/email/verify', async (req, reply) => {
